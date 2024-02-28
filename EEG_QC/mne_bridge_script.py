@@ -2,6 +2,7 @@ import sys
 import mne
 import time
 import matplotlib.pyplot as plt
+import matplotlib.image as img
 # 
 
 
@@ -22,17 +23,9 @@ def mne_bridge_compute_bridges(file_path):
     raw.set_montage(montage_1020)
     print(f"Searching for bridges...")
     bridged_idx, ed_matrix = mne.preprocessing.compute_bridged_electrodes(raw)
-    fig = mne.viz.plot_bridged_electrodes(
-        raw.info,
-        bridged_idx,
-        ed_matrix,
-        title=f"{file_name} bridged: {len(bridged_idx)}",
-        topomap_args=dict(vlim=(None, 5)),
-    )
 
-    # Add as image to new plot imshow
-    plt.imshow(fig)
-    return fig
+    return raw.info, bridged_idx, ed_matrix
+
 
 
 def main():
@@ -41,7 +34,7 @@ def main():
         sys.exit(1)
 
     filename = sys.argv[1]
-    fig = mne_bridge_compute_bridges(filename)
+    mne_bridge_compute_bridges(filename)
 
 
 if __name__ == "__main__":
