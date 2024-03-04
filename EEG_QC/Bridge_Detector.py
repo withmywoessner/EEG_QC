@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog, QTextEdit, QDesktopWidget
 from PyQt5.QtCore import QThread, pyqtSignal
 import mne
 import time
@@ -96,6 +96,19 @@ class MyApp(QWidget):
         self.initUI()
         self.worker = None
 
+    def center_on_screen(self):
+        # Get the current screen based on the widget's current position
+        current_screen = QApplication.screenAt(self.pos())
+        if not current_screen:
+            # Fallback to the primary screen if for some reason screenAt did not work
+            current_screen = QApplication.primaryScreen()
+        rect = current_screen.availableGeometry()
+        # Calculate the center position
+        x = int(rect.x() + (rect.width() - self.frameSize().width()) / 2)
+        y = int(rect.y() + (rect.height() - self.frameSize().height()) / 2)
+        # Move the window to the calculated center position
+        self.move(x, y)
+
     def plot_bridged_electrodes(self, info, bridged_idx, ed_matrix):
         # The plotting now happens in the main thread in response to worker's signal
         plt.ion()
@@ -159,5 +172,6 @@ class MyApp(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = MyApp()
+    ex.center_on_screen()
     ex.show()
     sys.exit(app.exec_())
