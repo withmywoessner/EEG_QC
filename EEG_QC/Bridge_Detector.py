@@ -3,7 +3,9 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFi
 from PyQt5.QtCore import QThread, pyqtSignal
 import mne
 import time
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use('QT5Agg')  # Use PyQt5 backend
 import os
 from pathlib import Path
 import tempfile
@@ -54,7 +56,14 @@ def mne_bridge_compute_bridges(file_path):
                     print(f"No .vhdr file found in {file_name}...")
 
     montage_1020 = mne.channels.make_standard_montage("standard_1020")
-    raw.set_montage(montage_1020, match_case=False, match_alias=True, on_missing='warn')
+
+    # Drop channels that are not in the standard 1020 montage
+    montage_ch_names_low = [ch.lower() for ch in montage_1020.ch_names]
+    drop_list = [idx for idx, ch in enumerate(raw.ch_names) if ch.lower() not in montage_ch_names_low]
+    if drop_list:
+        raw.drop_channels([raw.ch_names[i] for i in drop_list], on_missing='warn')
+
+    raw.set_montage(montage_1020, match_case=False, match_alias=False, on_missing='warn')
     print(f"Searching for bridges...")
     bridged_idx, ed_matrix = mne.preprocessing.compute_bridged_electrodes(raw)
 
@@ -110,16 +119,41 @@ class MyApp(QWidget):
         self.move(x, y)
 
     def plot_bridged_electrodes(self, info, bridged_idx, ed_matrix):
-        # The plotting now happens in the main thread in response to worker's signal
         plt.ion()
         file_name = file_name_parser(self.filename)
-        mne.viz.plot_bridged_electrodes(
+        fig = mne.viz.plot_bridged_electrodes(
             info,
             bridged_idx,
             ed_matrix,
             title=f"File: {file_name}\nBridged Electrodes: {len(bridged_idx)}",
             topomap_args=dict(vlim=(None, 5))
         )
+        plt.show()
+        self.center_figure_on_screen(fig)
+
+    def center_figure_on_screen(self, fig):
+        try:
+            # Ensure the figure canvas has been drawn, which initializes the renderer
+            fig.canvas.draw()
+
+            # Obtain screen size
+            screen = QApplication.primaryScreen()
+            screen_geometry = screen.geometry()
+            screen_width = screen_geometry.width()
+            screen_height = screen_geometry.height()
+
+            # Get the size of the figure window
+            fig_width, fig_height = fig.get_size_inches() * fig.dpi
+
+            # Calculate the center position
+            center_x = int((screen_width - fig_width) / 2)
+            center_y = int((screen_height - fig_height) / 2)
+
+            # Move the window to the center
+            fig.canvas.manager.window.move(center_x, center_y)
+        except AttributeError as e:
+            print(f"Could not center matplotlib figure: {e}")
+
 
     def initUI(self):
         self.textbox = QTextEdit(self)
